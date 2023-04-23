@@ -29,6 +29,14 @@ const Login = () => (
     <StyledLoginButton href="http://localhost:8888/login">
       Log in to Spotify
     </StyledLoginButton>
+
+    <button
+      onClick={() =>
+        (window.location.href = "http://localhost:8888/auth/google")
+      }
+    >
+      Log in with Google/YouTube
+    </button>
   </StyledLoginContainer>
 );
 

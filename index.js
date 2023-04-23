@@ -4,13 +4,24 @@ const express = require("express");
 const querystring = require("querystring");
 const axios = require("axios");
 
+const { google } = require("googleapis");
+
 const app = express();
 const port = 8888;
 
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+
+const oauth2Client = new google.auth.OAuth2(
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI
+);
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
@@ -37,9 +48,9 @@ app.get("/login", (req, res) => {
   );
 
   const queryParams = querystring.stringify({
-    client_id: CLIENT_ID,
+    client_id: SPOTIFY_CLIENT_ID,
     response_type: "code",
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
     state: state,
     scope: scope,
   });
@@ -47,7 +58,7 @@ app.get("/login", (req, res) => {
   res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
 });
 
-app.get("/callback", (req, res) => {
+app.get("/spotify-callback", (req, res) => {
   const code = req.query.code || null;
 
   axios({
@@ -56,12 +67,12 @@ app.get("/callback", (req, res) => {
     data: querystring.stringify({
       grant_type: "authorization_code",
       code: code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: SPOTIFY_REDIRECT_URI,
     }),
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${new Buffer.from(
-        `${CLIENT_ID}:${CLIENT_SECRET}`
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
       ).toString("base64")}`,
     },
   })
@@ -98,7 +109,7 @@ app.get("/refresh_token", (req, res) => {
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${new Buffer.from(
-        `${CLIENT_ID}:${CLIENT_SECRET}`
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
       ).toString("base64")}`,
     },
   })
@@ -108,6 +119,32 @@ app.get("/refresh_token", (req, res) => {
     .catch((error) => {
       res.send(error);
     });
+});
+
+// Google OAuth
+app.get("/auth/google", (req, res) => {
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["https://www.googleapis.com/auth/youtube"],
+  });
+
+  res.redirect(url);
+});
+
+app.get("/auth/google/callback", async (req, res) => {
+  const { code } = req.query;
+
+  const { tokens } = await oauth2Client.getToken(code);
+
+  // save the access token and refresh token to the database
+    const { access_token, refresh_token } = tokens;
+// or use them to make requests to the YouTube API
+
+  const queryParams = querystring.stringify({
+    googleAuth: 'success'
+  });
+
+  res.redirect(`http://localhost:3000/?${queryParams}`);
 });
 
 app.listen(port, () => {
