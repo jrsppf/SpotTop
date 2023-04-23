@@ -1,15 +1,17 @@
-require("dotenv").config();
-
+//create a an authorization using express.js and axios to make a request to the Youtube API to allow for creating a new playlist and adding videos to it.require("dotenv").config();
 const express = require("express");
-const querystring = require("querystring");
 const axios = require("axios");
-
+const querystring = require("querystring");
 const app = express();
 const port = 8888;
 
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI;
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
+
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 /**
  * Generates a random string containing numbers and letters
@@ -36,15 +38,15 @@ app.get("/login", (req, res) => {
     " "
   );
 
-  const queryParams = querystring.stringify({
-    client_id: CLIENT_ID,
+  const queryParameters = querystring.stringify({
+    client_id: SPOTIFY_CLIENT_ID,
     response_type: "code",
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
     state: state,
     scope: scope,
   });
 
-  res.redirect(`https://accounts.spotify.com/authorize?${queryParams}`);
+  res.redirect(`https://accounts.spotify.com/authorize?${queryParameters}`);
 });
 
 app.get("/callback", (req, res) => {
@@ -56,12 +58,12 @@ app.get("/callback", (req, res) => {
     data: querystring.stringify({
       grant_type: "authorization_code",
       code: code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: SPOTIFY_REDIRECT_URI,
     }),
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${new Buffer.from(
-        `${CLIENT_ID}:${CLIENT_SECRET}`
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
       ).toString("base64")}`,
     },
   })
@@ -69,13 +71,15 @@ app.get("/callback", (req, res) => {
       if (response.status === 200) {
         const { access_token, refresh_token, expires_in } = response.data;
 
-        const queryParams = querystring.stringify({
+        const queryParameters = querystring.stringify({
           access_token,
           refresh_token,
           expires_in,
         });
+        // redirect to react app
+        res.redirect(`http://localhost:3000/?${queryParameters}`);
 
-        res.redirect(`http://localhost:3000/?${queryParams}`);
+        // pass along tokens in query params
       } else {
         res.redirect(`/?${querystring.stringify({ error: "invalid_token" })}`);
       }
@@ -98,7 +102,7 @@ app.get("/refresh_token", (req, res) => {
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${new Buffer.from(
-        `${CLIENT_ID}:${CLIENT_SECRET}`
+        `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
       ).toString("base64")}`,
     },
   })
